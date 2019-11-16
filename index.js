@@ -29,7 +29,7 @@ client.on('message', async message => {
         }
         const userToWipe = message.content.slice('!wiperequests '.length);
         const server = message.guild;
-        dbClient.connect(err => {
+        dbClient.connect(async err => {
             const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
             const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
             if (!distinctDungeons) {
@@ -64,7 +64,7 @@ client.on('message', async message => {
             // Server info
             const server = message.guild;
             const requestId = `${server.Id}.${nickname}.${result.item}`;
-            dbClient.connect(err => {
+            dbClient.connect(async err => {
                 const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
                 const duplicate = await requestCollection.findOne({_id: requestId});
                 if (duplicate) {
