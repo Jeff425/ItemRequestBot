@@ -36,17 +36,20 @@ client.on('message', async message => {
             return;
         }
         const userToWipe = message.content.slice('!wiperequests '.length);
+        if (isNaN(userToWipe)) {
+            message.channel.send('Please submit the user ID of the user you wish to wipe');
+        }
         const server = message.guild;
         const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, userId: userToWipe});
         if (!distinctDungeons) {
-            message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
+            message.channel.send(`No item requests found for user ID ${userToWipe}`);
             return;
         }
         await requestCollection.deleteMany({server: server.id, userId: userToWipe});
         distinctDungeons.forEach(async dungeon => {
             await updateDungeonPost(server, dungeon, requestCollection);
         });
-        message.channel.send(`Removing all requests made by ${userToWipe}`);
+        message.channel.send(`Removing all requests made by user ID ${userToWipe}`);
     } else if (message.content.toLowerCase().startsWith('!itemrequest ')) {
         const nickname = message.member.displayName;
         const userId = message.author.id;
