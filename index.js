@@ -26,7 +26,7 @@ let dungeonPosts = null;
 dbClient.connect(() => {
     requestCollection = dbClient.db('item-request-bot').collection('item-requests');
     dungeonPosts = dbClient.db('item-request-bot').collection('dungeon-posts');
-    console.log('Mongo is ready');
+    console.log('Mongo is ready!');
 });
 
 client.on('message', async message => {
@@ -104,7 +104,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
         const message = await channel.fetchMessage(dungeonPostId.postId);  
         if (!dungeonCursor || await dungeonCursor.count() === 0) {
             message.delete();
-            await dungeonPosts.deleteOne({_id: dungeonPostId.postId});
+            await dungeonPosts.deleteOne({_id: dungeonPostKey});
             return;
         }
         message.edit(requestString);
