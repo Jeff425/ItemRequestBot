@@ -31,13 +31,13 @@ client.on('message', async message => {
         const server = message.guild;
         dbClient.connect(err => {
             const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
-            const distinctDungeons = requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
+            const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
             if (!distinctDungeons) {
                 message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
                 dbClient.close();
                 return;
             }
-            requestCollection.deleteMany({server: server.id, nickname: userToWipe});
+            await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
             distinctDungeons.forEach(dungeon => {
                 updateDungeonPost(server, dungeon, requestCollection);
             });
@@ -66,12 +66,11 @@ client.on('message', async message => {
             const requestId = `${server.Id}.${nickname}.${result.item}`;
             dbClient.connect(err => {
                 const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
-                const duplicate = requestCollection.findOne({_id: requestId});
-                console.log(duplicate);
+                const duplicate = await requestCollection.findOne({_id: requestId});
                 if (duplicate) {
-                    requestCollection.deleteOne({_id: requestId});
+                    await requestCollection.deleteOne({_id: requestId});
                 } else {
-                    requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
+                    await requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
                 }
                 updateDungeonPost(server, result.dungeon, requestCollection);
                 if (duplicate) {
@@ -92,9 +91,9 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     if (!channel) {
         return;
     }
-    let dungeonPostId = dungeonPosts.findOne({_id: dungeonPostKey});
+    let dungeonPostId = await dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
-    const dungeonRequests = requestCollection.find({server: server.id, dungeon: dungeon});
+    const dungeonRequests = await requestCollection.find({server: server.id, dungeon: dungeon});
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item']];
@@ -107,13 +106,13 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
         const message = await channel.fetchMessage(dungeonPostId.postId);  
         if (!dungeonRequests || dungeonRequests.length === 0) {
             message.delete();
-            dungeonPosts.deleteOne({_id: dungeonPostId});
+            await dungeonPosts.deleteOne({_id: dungeonPostId});
             return;
         }
         message.edit(requestString);
     } else {
         message = await channel.send(requestString);
-        dungeonPosts.insertOne({_id: dungeonPostKey, postId: message.id});
+        await dungeonPosts.insertOne({_id: dungeonPostKey, postId: message.id});
     }
 }
 
