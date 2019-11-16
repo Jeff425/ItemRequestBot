@@ -11,15 +11,23 @@ const channelName = 'item-requests';
 const lookupString = 'Source: ';
 const adminRole = 'Admin';
 
+const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
+
 client.once('ready', () => {
-	console.log('Ready!');
+	console.log('Discord is ready!');
 });
 
 client.login(process.env.BOT_TOKEN);
 
-const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
-
 const dbClient = new MongoClient(`mongodb+srv://${process.env.MONGO_NAME}:${process.env.MONGO_PASS}@cluster0-xobwb.mongodb.net/test?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
+
+let requestCollection = null;
+let dungeonPosts = null;
+dbClient.connect(() => {
+    requestCollection = dbClient.db('item-request-bot').collection('item-requests');
+    dungeonPosts = dbClient.db('item-request-bot').collection('dungeon-posts');
+    console.log('Mongo is ready');
+});
 
 client.on('message', async message => {
     if (message.content.toLocaleLowerCase().startsWith('!wiperequests ')) {
@@ -29,21 +37,16 @@ client.on('message', async message => {
         }
         const userToWipe = message.content.slice('!wiperequests '.length);
         const server = message.guild;
-        dbClient.connect(async err => {
-            const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
-            const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
-            if (!distinctDungeons) {
-                message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
-                dbClient.close();
-                return;
-            }
-            await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
-            distinctDungeons.forEach(async dungeon => {
-                await updateDungeonPost(server, dungeon, requestCollection);
-            });
-            dbClient.close();
-            message.channel.send(`Removing all requests made by ${userToWipe}`);
+        const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
+        if (!distinctDungeons) {
+            message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
+            return;
+        }
+        await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
+        distinctDungeons.forEach(async dungeon => {
+            await updateDungeonPost(server, dungeon, requestCollection);
         });
+        message.channel.send(`Removing all requests made by ${userToWipe}`);
     } else if (message.content.toLowerCase().startsWith('!itemrequest ')) {
         const nickname = message.member.displayName;
         if (!message.member.roles.find(r => r.name === requiredRole)) {
@@ -64,28 +67,23 @@ client.on('message', async message => {
             // Server info
             const server = message.guild;
             const requestId = `${server.id}.${nickname}.${result.item}`;
-            dbClient.connect(async err => {
-                const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
-                const duplicate = await requestCollection.findOne({_id: requestId});
-                if (duplicate) {
-                    await requestCollection.deleteOne({_id: requestId});
-                } else {
-                    await requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
-                }
-                await updateDungeonPost(server, result.dungeon, requestCollection);
-                if (duplicate) {
-                    message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
-                } else {
-                    message.channel.send(`${nickname} - ${className} has requested ${result.item} dropped${result.boss && ` by ${result.boss}`} in ${result.dungeon}`);
-                }
-                dbClient.close();
-            });
+            const duplicate = await requestCollection.findOne({_id: requestId});
+            if (duplicate) {
+                await requestCollection.deleteOne({_id: requestId});
+            } else {
+                await requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
+            }
+            await updateDungeonPost(server, result.dungeon, requestCollection);
+            if (duplicate) {
+                message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
+            } else {
+                message.channel.send(`${nickname} - ${className} has requested ${result.item} dropped${result.boss && ` by ${result.boss}`} in ${result.dungeon}`);
+            }
         }
     }
 });
 
 async function updateDungeonPost(server, dungeon, requestCollection) {
-    const dungeonPosts = dbClient.db('item-request-bot').collection('dungeon-posts');
     const dungeonPostKey = `${server.id}.${dungeon}`;
     const channel = server.channels.find('name', channelName);
     if (!channel) {
@@ -94,7 +92,6 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     let dungeonPostId = await dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
     const dungeonCursor = await requestCollection.find({server: server.id, dungeon: dungeon}).sort({nickname: 1});
-    console.log(`${server.id} + ${dungeon} + ${await dungeonCursor.count()}`);
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item']];
