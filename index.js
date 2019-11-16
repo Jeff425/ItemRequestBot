@@ -104,7 +104,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
         const message = await channel.fetchMessage(dungeonPostId.postId);  
         if (!dungeonCursor || await dungeonCursor.count() === 0) {
             message.delete();
-            await dungeonPosts.deleteOne({_id: dungeonPostId});
+            await dungeonPosts.deleteOne({_id: dungeonPostId.postId});
             return;
         }
         message.edit(requestString);
