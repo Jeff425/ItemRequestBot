@@ -39,7 +39,7 @@ client.on('message', async message => {
             }
             await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
             distinctDungeons.forEach(dungeon => {
-                updateDungeonPost(server, dungeon, requestCollection);
+                await updateDungeonPost(server, dungeon, requestCollection);
             });
             dbClient.close();
             message.channel.send(`Removing all requests made by ${userToWipe}`);
@@ -63,7 +63,7 @@ client.on('message', async message => {
         } else {
             // Server info
             const server = message.guild;
-            const requestId = `${server.Id}.${nickname}.${result.item}`;
+            const requestId = `${server.id}.${nickname}.${result.item}`;
             dbClient.connect(async err => {
                 const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
                 const duplicate = await requestCollection.findOne({_id: requestId});
@@ -72,7 +72,7 @@ client.on('message', async message => {
                 } else {
                     await requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
                 }
-                updateDungeonPost(server, result.dungeon, requestCollection);
+                await updateDungeonPost(server, result.dungeon, requestCollection);
                 if (duplicate) {
                     message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
                 } else {
