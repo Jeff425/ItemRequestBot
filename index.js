@@ -1,6 +1,7 @@
 const request = require('request-promise');
 const cheerio = require('cheerio');
 const table = require('markdown-table');
+const MongoClient = require('mongodb').MongoClient;
 
 const Discord = require('discord.js');
 const client = new Discord.Client();
@@ -10,9 +11,6 @@ const channelName = 'item-requests';
 const lookupString = 'Source: ';
 const adminRole = 'Admin';
 
-const itemRequests = {};
-const dungeonPosts = {};
-
 client.once('ready', () => {
 	console.log('Ready!');
 });
@@ -20,6 +18,8 @@ client.once('ready', () => {
 client.login(process.env.BOT_TOKEN);
 
 const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
+
+const dbClient = new MongoClient(`mongodb+srv://${process.env.MONGO_NAME}:${process.env.MONGO_PASS}@cluster0-xobwb.mongodb.net/test?retryWrites=true&w=majority`, { useNewUrlParser: true });
 
 client.on('message', async message => {
     if (message.content.toLocaleLowerCase().startsWith('!wiperequests ')) {
@@ -29,18 +29,21 @@ client.on('message', async message => {
         }
         const userToWipe = message.content.slice('!wiperequests '.length);
         const server = message.guild;
-        const dungeonRequests = itemRequests[server.id];
-        if (!dungeonRequests) {
-            message.channel.send('No dungeons are requested');
-            return;
-        }
-        for (var dungeon in dungeonRequests) {
-            if (dungeonRequests.hasOwnProperty(dungeon)) {
-                dungeonRequests[dungeon] = dungeonRequests[dungeon].filter(req => req.nickname !== userToWipe);
-                updateDungeonPost(server, dungeon);
+        dbClient.connect(err => {
+            const requestCollection = dbClient.db('item-request-bot').collections('item-requests');
+            const distinctDungeons = requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
+            if (!distinctDungeons) {
+                message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
+                dbClient.close();
+                return;
             }
-        }
-        message.channel.send(`Removing all requests made by ${userToWipe}`);
+            requestCollection.deleteMany({server: server.id, nickname: userToWipe});
+            distinctDungeons.forEach(dungeon => {
+                updateDungeonPost(server, dungeon, requestCollection);
+            });
+            dbClient.close();
+            message.channel.send(`Removing all requests made by ${userToWipe}`);
+        });
     } else if (message.content.toLowerCase().startsWith('!itemrequest ')) {
         const nickname = message.member.displayName;
         if (!message.member.roles.find(r => r.name === requiredRole)) {
@@ -60,44 +63,37 @@ client.on('message', async message => {
         } else {
             // Server info
             const server = message.guild;
-            const serverId = server.id;
-            let serverRequests = itemRequests[serverId];
-            if (!serverRequests) {
-                serverRequests = {};
-                itemRequests[serverId] = serverRequests;
-            }
-
-            let dungeonRequest = serverRequests[result.dungeon];
-            if (!dungeonRequest) {
-                dungeonRequest = [];
-            }
-            const itemRequest = {nickname: nickname, className: className, item: result.item, boss: result.boss};
-            const duplicates = dungeonRequest.filter(req => req.nickname === itemRequest.nickname && req.item === itemRequest.item)
-            if (duplicates.length) {
-                const dup = duplicates[0];
-                dungeonRequest = dungeonRequest.filter(req => req !== dup);
-            } else {
-                dungeonRequest.push(itemRequest);
-            }
-            serverRequests[result.dungeon] = dungeonRequest;
-            updateDungeonPost(server, result.dungeon);
-            if (duplicates.length) {
-                message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
-            } else {
-                message.channel.send(`${nickname} - ${className} has requested ${result.item} dropped${result.boss && ` by ${result.boss}`} in ${result.dungeon}`);
-            }
+            const requestId = `${server.Id}.${itemRequest.nickname}.${itemRequest.item}`;
+            dbClient.connect(err => {
+                const requestCollection = dbClient.db('item-request-bot').collections('item-requests');
+                const duplicate = requestCollection.findOne({_id: requestId});
+                if (duplicate) {
+                    requestCollection.deleteOne({_id: requestId});
+                } else {
+                    requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
+                }
+                updateDungeonPost(server, result.dungeon, requestCollection);
+                if (duplicates) {
+                    message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
+                } else {
+                    message.channel.send(`${nickname} - ${className} has requested ${result.item} dropped${result.boss && ` by ${result.boss}`} in ${result.dungeon}`);
+                }
+                dbClient.close();
+            });
         }
     }
 });
 
-async function updateDungeonPost(server, dungeon) {
+async function updateDungeonPost(server, dungeon, requestCollection) {
+    const dungeonPosts = dbClient.db('item-request-bot').collections('dungeon-posts');
+    const dungeonPostKey = `${server.id}.${dungeon}`;
     const channel = server.channels.find('name', channelName);
     if (!channel) {
         return;
     }
-    let dungeonPostId = dungeonPosts[dungeon + server.id];
+    let dungeonPostId = dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
-    const dungeonRequests = itemRequests[server.id][dungeon];
+    const dungeonRequests = requestCollection.find({server: server.id, dungeon: dungeon});
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item']];
@@ -107,17 +103,16 @@ async function updateDungeonPost(server, dungeon) {
     requestString += table(dataTable);
     requestString += '```';
     if (!newMessage) {
-        const message = await channel.fetchMessage(dungeonPostId);  
+        const message = await channel.fetchMessage(dungeonPostId.postId);  
         if (!dungeonRequests || dungeonRequests.length === 0) {
             message.delete();
-            dungeonPosts[dungeon + server.id] = null;
+            dungeonPosts.deleteOne({_id: dungeonPostId});
             return;
         }
         message.edit(requestString);
     } else {
         message = await channel.send(requestString);
-        dungeonPostId = message.id;
-        dungeonPosts[dungeon + server.id] = dungeonPostId;
+        dungeonPosts.insertOne({_id: dungeonPostKey, postId: message.id});
     }
 }
 
