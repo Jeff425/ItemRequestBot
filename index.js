@@ -67,6 +67,7 @@ client.on('message', async message => {
             dbClient.connect(err => {
                 const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
                 const duplicate = requestCollection.findOne({_id: requestId});
+                console.log(duplicate);
                 if (duplicate) {
                     requestCollection.deleteOne({_id: requestId});
                 } else {
