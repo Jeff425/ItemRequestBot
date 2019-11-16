@@ -19,7 +19,7 @@ client.login(process.env.BOT_TOKEN);
 
 const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
 
-const dbClient = new MongoClient(`mongodb+srv://${process.env.MONGO_NAME}:${process.env.MONGO_PASS}@cluster0-xobwb.mongodb.net/test?retryWrites=true&w=majority`, { useNewUrlParser: true });
+const dbClient = new MongoClient(`mongodb+srv://${process.env.MONGO_NAME}:${process.env.MONGO_PASS}@cluster0-xobwb.mongodb.net/test?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
 
 client.on('message', async message => {
     if (message.content.toLocaleLowerCase().startsWith('!wiperequests ')) {
@@ -30,7 +30,7 @@ client.on('message', async message => {
         const userToWipe = message.content.slice('!wiperequests '.length);
         const server = message.guild;
         dbClient.connect(err => {
-            const requestCollection = dbClient.db('item-request-bot').collections('item-requests');
+            const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
             const distinctDungeons = requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
             if (!distinctDungeons) {
                 message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
@@ -65,7 +65,7 @@ client.on('message', async message => {
             const server = message.guild;
             const requestId = `${server.Id}.${nickname}.${result.item}`;
             dbClient.connect(err => {
-                const requestCollection = dbClient.db('item-request-bot').collections('item-requests');
+                const requestCollection = dbClient.db('item-request-bot').collection('item-requests');
                 const duplicate = requestCollection.findOne({_id: requestId});
                 if (duplicate) {
                     requestCollection.deleteOne({_id: requestId});
@@ -85,7 +85,7 @@ client.on('message', async message => {
 });
 
 async function updateDungeonPost(server, dungeon, requestCollection) {
-    const dungeonPosts = dbClient.db('item-request-bot').collections('dungeon-posts');
+    const dungeonPosts = dbClient.db('item-request-bot').collection('dungeon-posts');
     const dungeonPostKey = `${server.id}.${dungeon}`;
     const channel = server.channels.find('name', channelName);
     if (!channel) {
