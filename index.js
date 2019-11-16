@@ -94,6 +94,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     let dungeonPostId = await dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
     const dungeonRequests = await requestCollection.find({server: server.id, dungeon: dungeon});
+    console.log(dungeonRequests);
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item']];
