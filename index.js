@@ -37,18 +37,19 @@ client.on('message', async message => {
         }
         const userToWipe = message.content.slice('!wiperequests '.length);
         const server = message.guild;
-        const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, nickname: userToWipe});
+        const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, userId: userToWipe});
         if (!distinctDungeons) {
             message.channel.send(`No item requests found for ${userToWipe} (This is case sensitive!)`);
             return;
         }
-        await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
+        await requestCollection.deleteMany({server: server.id, userId: userToWipe});
         distinctDungeons.forEach(async dungeon => {
             await updateDungeonPost(server, dungeon, requestCollection);
         });
         message.channel.send(`Removing all requests made by ${userToWipe}`);
     } else if (message.content.toLowerCase().startsWith('!itemrequest ')) {
         const nickname = message.member.displayName;
+        const userId = message.author.id;
         if (!message.member.roles.find(r => r.name === requiredRole)) {
             message.channel.send(`${nickname} does not have role ${requiredRole}`);
             return;
@@ -66,12 +67,12 @@ client.on('message', async message => {
         } else {
             // Server info
             const server = message.guild;
-            const requestId = `${server.id}.${nickname}.${result.item}`;
+            const requestId = `${server.id}.${userId}.${result.item}`;
             const duplicate = await requestCollection.findOne({_id: requestId});
             if (duplicate) {
                 await requestCollection.deleteOne({_id: requestId});
             } else {
-                await requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
+                await requestCollection.insertOne({_id: requestId, userId: userId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
             }
             await updateDungeonPost(server, result.dungeon, requestCollection);
             if (duplicate) {
@@ -94,9 +95,9 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     const dungeonCursor = await requestCollection.find({server: server.id, dungeon: dungeon}).sort({nickname: 1});
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
-    const dataTable = [['Player', 'Class', 'Boss', 'Item']];
+    const dataTable = [['Player', 'Class', 'Boss', 'Item', 'User ID']];
     await dungeonCursor.forEach(itemRequest => {
-        dataTable.push([itemRequest.nickname, itemRequest.className, itemRequest.boss, itemRequest.item]);
+        dataTable.push([itemRequest.nickname, itemRequest.className, itemRequest.boss, itemRequest.item, itemRequest.userId]);
     });
     requestString += table(dataTable);
     requestString += '```';
