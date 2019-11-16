@@ -73,7 +73,7 @@ client.on('message', async message => {
                     requestCollection.insertOne({_id: requestId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
                 }
                 updateDungeonPost(server, result.dungeon, requestCollection);
-                if (duplicates) {
+                if (duplicate) {
                     message.channel.send(`Removing item request for ${result.item} by ${nickname}`);
                 } else {
                     message.channel.send(`${nickname} - ${className} has requested ${result.item} dropped${result.boss && ` by ${result.boss}`} in ${result.dungeon}`);
