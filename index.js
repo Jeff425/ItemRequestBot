@@ -38,6 +38,7 @@ client.on('message', async message => {
         const userToWipe = message.content.slice('!wiperequests '.length);
         if (isNaN(userToWipe)) {
             message.channel.send('Please submit the user ID of the user you wish to wipe');
+            return;
         }
         const server = message.guild;
         const distinctDungeons = await requestCollection.distinct('dungeon', {server:server.id, userId: userToWipe});
