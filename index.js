@@ -94,7 +94,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     let dungeonPostId = await dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
     const dungeonCursor = await requestCollection.find({server: server.id, dungeon: dungeon}).sort({nickname: 1});
-    console.log(`${server.id} + ${dungeon}`);
+    console.log(`${server.id} + ${dungeon} + ${dungeonCursor.count()}`);
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item']];
@@ -105,7 +105,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     requestString += '```';
     if (!newMessage) {
         const message = await channel.fetchMessage(dungeonPostId.postId);  
-        if (!dungeonRequests || dungeonRequests.length === 0) {
+        if (!dungeonCursor || dungeonCursor.count() === 0) {
             message.delete();
             await dungeonPosts.deleteOne({_id: dungeonPostId});
             return;
