@@ -38,7 +38,7 @@ client.on('message', async message => {
                 return;
             }
             await requestCollection.deleteMany({server: server.id, nickname: userToWipe});
-            distinctDungeons.forEach(dungeon => {
+            distinctDungeons.forEach(async dungeon => {
                 await updateDungeonPost(server, dungeon, requestCollection);
             });
             dbClient.close();
