@@ -63,7 +63,7 @@ client.on('message', async message => {
         } else {
             // Server info
             const server = message.guild;
-            const requestId = `${server.Id}.${itemRequest.nickname}.${itemRequest.item}`;
+            const requestId = `${server.Id}.${nickname}.${result.item}`;
             dbClient.connect(err => {
                 const requestCollection = dbClient.db('item-request-bot').collections('item-requests');
                 const duplicate = requestCollection.findOne({_id: requestId});
