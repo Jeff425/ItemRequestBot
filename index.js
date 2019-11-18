@@ -17,6 +17,14 @@ client.once('ready', () => {
 	console.log('Discord is ready!');
 });
 
+client.on("error", e => {
+    console.log(e)
+});
+
+process.on("uncaughtException", e => {
+    console.log(e);
+});
+
 client.login(process.env.BOT_TOKEN);
 
 const dbClient = new MongoClient(`mongodb+srv://${process.env.MONGO_NAME}:${process.env.MONGO_PASS}@cluster0-xobwb.mongodb.net/test?retryWrites=true&w=majority`, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -28,6 +36,8 @@ dbClient.connect(() => {
     dungeonPosts = dbClient.db('item-request-bot').collection('dungeon-posts');
     console.log('Mongo is ready!');
 });
+
+
 
 client.on('message', async message => {
     if (message.content.toLowerCase().startsWith('!itemrequesthelp') || message.content.toLowerCase() === '!itemrequest') {
