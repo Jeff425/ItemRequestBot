@@ -30,7 +30,7 @@ dbClient.connect(() => {
 });
 
 client.on('message', async message => {
-    if (message.content.toLowerCase().startsWith('!itemrequesthelp')) {
+    if (message.content.toLowerCase().startsWith('!itemrequesthelp') || message.content.toLowerCase() === '!itemrequest') {
         message.channel.send('In order to request an item, please enter\n```\n!itemrequest <item_name>\n```\nExample\n```\n!itemrequest Ban\'thok Sash\n```\nIf you would like to remove a request (you got the item) just enter the same command again.');
     } else if (message.content.toLowerCase().startsWith('!wiperequests ')) {
         if (!message.member.roles.find(r => r.name === adminRole)) {
