@@ -10,6 +10,7 @@ const requiredRole = 'Guild Member';
 const channelName = 'item-requests';
 const lookupString = 'Source: ';
 const adminRole = 'Admin';
+const maxRequestsPerPost = 15;
 
 const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
 
@@ -112,8 +113,10 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item', 'User ID']];
-    await dungeonCursor.forEach(itemRequest => {
-        dataTable.push([itemRequest.nickname, itemRequest.className, itemRequest.boss, itemRequest.item, itemRequest.userId]);
+    await dungeonCursor.forEach((itemRequest, i) => {
+        if (i < maxRequestsPerPost) {
+            dataTable.push([itemRequest.nickname, itemRequest.className, itemRequest.boss, itemRequest.item, itemRequest.userId]);
+        }
     });
     requestString += table(dataTable);
     requestString += '```';
