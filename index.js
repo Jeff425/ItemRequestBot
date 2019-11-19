@@ -114,6 +114,8 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item', 'User ID']];
     await dungeonCursor.forEach((itemRequest, i) => {
+        console.log(i);
+        console.log(maxRequestsPerPost);
         if (i < maxRequestsPerPost) {
             dataTable.push([itemRequest.nickname, itemRequest.className, itemRequest.boss, itemRequest.item, itemRequest.userId]);
         }
