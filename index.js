@@ -89,7 +89,7 @@ client.on('message', async message => {
             if (duplicate) {
                 await requestCollection.deleteOne({_id: requestId});
             } else {
-                await requestCollection.insertOne({_id: requestId, userId: userId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon});
+                await requestCollection.insertOne({_id: requestId, userId: userId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon, date: Date.now()});
             }
             await updateDungeonPost(server, result.dungeon, requestCollection);
             if (duplicate) {
@@ -109,7 +109,7 @@ async function updateDungeonPost(server, dungeon, requestCollection) {
     }
     let dungeonPostId = await dungeonPosts.findOne({_id: dungeonPostKey});
     const newMessage = !dungeonPostId;
-    const dungeonCursor = await requestCollection.find({server: server.id, dungeon: dungeon}).sort({nickname: 1});
+    const dungeonCursor = await requestCollection.find({server: server.id, dungeon: dungeon}).sort({date: 1});
     let requestString = `^\n__**${dungeon}**__\n`;
     requestString += '```\n';
     const dataTable = [['Player', 'Class', 'Boss', 'Item', 'User ID']];
@@ -265,7 +265,7 @@ const stratBosses = {
     'Balnazzar' : 'Living',
 
     'Magistrate Barthilas': 'Undead',
-    'Stonespire': 'Undead',
+    'Stonespine': 'Undead',
     'Baroness Anastari': 'Undead',
     'Black Guard Swordsmith': 'Undead',
     'Nerub\'enkan': 'Undead',
