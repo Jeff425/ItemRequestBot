@@ -11,6 +11,7 @@ const channelName = 'item-requests';
 const lookupString = 'Source: ';
 const adminRole = 'Admin';
 const maxRequestsPerPost = 15;
+const maxRequestsPerPlayer = 3;
 
 const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
 
@@ -89,6 +90,11 @@ client.on('message', async message => {
             if (duplicate) {
                 await requestCollection.deleteOne({_id: requestId});
             } else {
+                const posts = await requestCollection.find({userId: userId, server: server.id}).count();
+                if (posts >= maxRequestsPerPlayer) {
+                    message.channel.send(`You cannot have more than ${maxRequestsPerPlayer} requests. You currently have ${posts}.`);
+                    return;
+                }
                 await requestCollection.insertOne({_id: requestId, userId: userId, server: server.id, nickname: nickname, className: className, item: result.item, boss: result.boss, dungeon: result.dungeon, date: Date.now()});
             }
             await updateDungeonPost(server, result.dungeon, requestCollection);
