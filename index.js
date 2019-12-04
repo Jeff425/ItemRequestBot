@@ -12,6 +12,7 @@ const lookupString = 'Source: ';
 const adminRole = 'Admin';
 const maxRequestsPerPost = 15;
 const maxRequestsPerPlayer = 3;
+const requestMaxExemptions = ['198991804995993609'];
 
 const classes = ['Warrior', 'Paladin', 'Shaman', 'Mage', 'Rogue', 'Warlock', 'Druid', 'Priest', 'Hunter'];
 
@@ -91,7 +92,7 @@ client.on('message', async message => {
                 await requestCollection.deleteOne({_id: requestId});
             } else {
                 const posts = await requestCollection.find({userId: userId, server: server.id}).count();
-                if (posts >= maxRequestsPerPlayer) {
+                if (!requestMaxExemptions.includes(userId) && posts >= maxRequestsPerPlayer) {
                     message.channel.send(`You cannot have more than ${maxRequestsPerPlayer} requests. You currently have ${posts}.`);
                     return;
                 }
